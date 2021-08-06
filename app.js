@@ -1,34 +1,62 @@
-let TIME_TO_SEARCH = 'from=2020-03-01T00:00:00Z&to=2020-10-10T00:00:00Z'
-let SLUG = ''
+let TIME_TO_SEARCH = '2021-08-04T00:00:00Z';
 const INPUT = document.getElementById('countrySelector');
-let STATUS = 'confirmed'
+let STATUS = 'confirmed';
+let SLUG = 'Global';
 
 
 const getData = async () => {
-    const data = await fetch(`https://api.covid19api.com/country/${SLUG}?${TIME_TO_SEARCH}`);
+    let data = null
+    if (SLUG === 'Global'){
+        data = await fetch('https://api.covid19api.com/summary');
+        const result = await data.json();
 
-    const result = await data.json();
-    console.log(result)
-    return result
+        return result.Global;
+    } else {
 
+        data = await fetch(`https://api.covid19api.com/country/${SLUG}?from=2020-03-01T00:00:00Z&to=${TIME_TO_SEARCH}`);
+        const result = await data.json();
+       
+        return result;
+    }
 }
 
 async function getCases () {
     const allCases = await getData();
-    const allCasesLastPosition = allCases[allCases.length - 1]
+    if (SLUG !== 'Global'){
+        const {Confirmed, Deaths, Active, Recovered} = allCases[allCases.length - 1];
+        const allCasesPreviousLastPosition = allCases[allCases.length - 2];
 
-    const confirmedCases = allCasesLastPosition.Confirmed
-    const deaths = allCasesLastPosition.Deaths
-    const active = allCasesLastPosition.Active
-    const recovered = allCasesLastPosition.Recovered
+        const previousConfirmedCases = allCasesPreviousLastPosition.Confirmed;
+        const previousDeaths = allCasesPreviousLastPosition.Deaths;
+        const previousActive = allCasesPreviousLastPosition.Active;
+        const previousRecovered = allCasesPreviousLastPosition.Recovered;
 
-    return {
-        'confirmed': confirmedCases,
-        'deaths': deaths,
-        'active': active,
-        'recovered': recovered
-    };
-}
+
+        return {
+            'confirmed': Confirmed,
+            'deaths': Deaths,
+            'active': Active,
+            'recovered': Recovered,
+            'previous_confirmed':previousConfirmedCases,
+            'previous_deaths': previousDeaths,
+            'previous_active': previousActive,
+            'previous_recovered': previousRecovered
+        };
+    } else {
+        const confirmedCases = allCases.TotalConfirmed;
+        const deaths = allCases.TotalDeaths;
+        const update = allCases.Date;
+        const recovered = allCases.TotalRecovered;
+
+        return {
+            'confirmed': confirmedCases,
+            'deaths': deaths,
+            'update': update,
+            'recovered': recovered
+        };
+    }
+
+};
 
 const getCountries = async () => {
     const data = await fetch('https://api.covid19api.com/summary');
@@ -38,35 +66,51 @@ const getCountries = async () => {
             name: Country,
             slug:Slug
         }
-    })
+    });
+
     let options = [`<select ${onchange = ((event)=>handleCountryChange(event))}><option>Global</option>`];
 
     allCountries.map(country =>{
        options.push(`<option value = '${country.slug}' >${country.name}</option>`)
-    })
-    options.push('</select>')
-    
-    INPUT.innerHTML = options
-}
+    });
+
+    options.push('</select>');
+    INPUT.innerHTML = options;
+};
 
 const handleCountryChange = (event) => {
-    SLUG = event.target.value
-    renderScreen()
+    SLUG = event.target.value;
+    renderScreen();
+};
+
+const calcDifference = (updated,previous) => {
+    if(SLUG !== "Global"){
+        const rest = (updated - previous);
+        if(rest > 0) {
+            return '⬆' + rest.toLocaleString()
+        }
+        return '⬇' + rest.toLocaleString()
+    } return ''
 }
 
 const renderScreen = async () => {
-    const cases = await getCases()
-    console.log(cases)
+    const cases = await getCases();
+
     const confirmed = document.getElementById('confirmed');
     const deaths = document.getElementById('deaths');
     const active = document.getElementById('active');
     const recovered = document.getElementById('recovered');
 
-
-    confirmed.textContent = "Total Confirmados: " + cases.confirmed.toLocaleString();
-    deaths.textContent = "Total Mortos: " + cases.deaths.toLocaleString();
-    active.textContent = "Total Ativos: " + cases.active.toLocaleString();
-    recovered.textContent = "Total Recuperados: " + cases.recovered.toLocaleString();
+    confirmed.innerHTML = "Total Confirmados: " + cases.confirmed.toLocaleString() +'\n' + calcDifference(cases.confirmed,cases.previous_confirmed)
+    deaths.innerHTML = "Total Mortos: " + cases.deaths.toLocaleString() +'\n' + calcDifference(cases.deaths,cases.previous_deaths);
+    recovered.innerHTML = "Total Recuperados: " + cases.recovered.toLocaleString() +'\n' + calcDifference(cases.recovered,cases.previous_recovered);
+    
+    if (SLUG === 'Global'){
+        let date = new Date(cases.update)
+        active.innerHTML = "Atualização: " + date.toLocaleString('pt-BR', {hour12:false})
+    } else {
+        active.innerHTML = "Total Ativos: " + cases.active.toLocaleString() +'\n' + calcDifference(cases.active,cases.previous_active);
+    }
 }
 
 getCountries();
