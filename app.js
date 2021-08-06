@@ -1,6 +1,9 @@
-let TIME_TO_SEARCH = '2021-08-04T00:00:00Z';
-const INPUT = document.getElementById('countrySelector');
-let STATUS = 'confirmed';
+const COUNTRY_SELECTOR = document.getElementById('countrySelector');
+
+const DATE_SELECTOR = document.getElementById('dateSelector')
+DATE_SELECTOR.addEventListener('change',((event)=>handleDateChange(event)))
+
+let TIME_TO_SEARCH = '';
 let SLUG = 'Global';
 
 
@@ -13,7 +16,7 @@ const getData = async () => {
         return result.Global;
     } else {
 
-        data = await fetch(`https://api.covid19api.com/country/${SLUG}?from=2020-03-01T00:00:00Z&to=${TIME_TO_SEARCH}`);
+        data = await fetch(`https://api.covid19api.com/country/${SLUG}?from=2020-03-01T00:00:00Z&to=${TIME_TO_SEARCH}T00:00:00Z`);
         const result = await data.json();
        
         return result;
@@ -75,13 +78,19 @@ const getCountries = async () => {
     });
 
     options.push('</select>');
-    INPUT.innerHTML = options;
+    COUNTRY_SELECTOR.innerHTML = options;
 };
 
 const handleCountryChange = (event) => {
     SLUG = event.target.value;
     renderScreen();
 };
+const handleDateChange = (event) => {
+    TIME_TO_SEARCH = event.target.value;
+    event.stopPropagation();
+    renderScreen();
+
+}
 
 const calcDifference = (updated,previous) => {
     if(SLUG !== "Global"){
